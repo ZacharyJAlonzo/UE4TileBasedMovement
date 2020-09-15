@@ -16,5 +16,5 @@ Tile Movement Component
 - Stores movement info, and provides TArrays of valid tiles.
 
 Tile Attack Component
--Stores attack infomation in FMoveInformation and FRangeInfo structs.
--provides TArrays of valid attack tiles.
+- Stores attack infomation in FMoveInformation and FRangeInfo structs.
+- provides TArrays of valid attack tiles.
