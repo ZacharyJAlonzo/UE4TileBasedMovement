@@ -35,6 +35,8 @@ public:
 		int32 GeneralRange = 0;
 
 
+	bool bDidAttack = false;
+
 	//should a general pathfinding range be applied, instead of a combination of the three?
 	//If ticked, only general range field will be used.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -115,6 +117,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 		UInstancedStaticMeshComponent* GetEpicenterTileMesh();
 
+	TArray<int32> GetGeneralRange(FMoveInformation Move, TArray<int32>& OutEpicenterTiles);
+	TArray<int32> GetGeneralRange(int32 index, FMoveInformation Move, TArray<int32>& OutEpicenterTiles);
 
 private:	
 	UTileLocationComponent* LocationComponent = nullptr;
@@ -125,7 +129,9 @@ private:
 	//helpers for GetValidAttackTiles
 	TArray<int32> GetDiagonals(FMoveInformation Move, bool bUseEpicenter);
 	TArray<int32> GetHorizontals(FMoveInformation Move, bool bUseEpicenter);
-	TArray<int32> GetGeneralRange(FMoveInformation Move, TArray<int32>& OutEpicenterTiles);
+
+	TArray<int32> GetDiagonals(int32 index, FMoveInformation Move, bool bUseEpicenter);
+	TArray<int32> GetHorizontals(int32 index, FMoveInformation Move, bool bUseEpicenter);
 
 	//placeholder with similar functionality.
 	bool ValidatePotentialMove(int32 r, int32 c);

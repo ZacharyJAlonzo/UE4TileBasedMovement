@@ -7,6 +7,7 @@
 #include "TileSystem/Gamemodes/GameMode_C.h"
 #include "AIController.h"
 #include "TileSystem/Components/TileLocationComponent.h"
+#include "TileSystem/Actors/TileCharacterBase.h"
 
 // Sets default values for this component's properties
 UTileMovementComponent::UTileMovementComponent()
@@ -25,6 +26,11 @@ UTileMovementComponent::UTileMovementComponent()
 
 }
 
+
+AInstancedTileGrid* UTileMovementComponent::GetTileGrid()
+{
+    return TileGrid;
+}
 
 // Called when the game starts
 void UTileMovementComponent::BeginPlay()
@@ -248,6 +254,11 @@ bool UTileMovementComponent::ValidatePotentialMove(int32 r, int32 c)
     return false;
 }
 
+int32 UTileMovementComponent::GetMoveRange()
+{
+    return MoveDistance;
+}
+
 void UTileMovementComponent::MoveTo(FVector loc, int32 index)
 {
     AAIController* Controller = Cast<AAIController>(Cast<APawn>(GetOwner())->GetController());
@@ -266,7 +277,9 @@ void UTileMovementComponent::MoveTo(FVector loc, int32 index)
             LocationComponent->UpdatePosition(index / TileGrid->GetGridColumns(), index % TileGrid->GetGridColumns(), TileGrid);
         
             //THIS SHOULD BE ITERATIVE. MOVE FROM TILE TO TILE, NOT PATHFINDING DIAGONALS.
-            Controller->MoveToLocation(loc);         
+            Controller->MoveToLocation(loc);
+
+            Cast<ATileCharacterBase>(GetOwner())->SetCanMove(false);
         }
         else
         {

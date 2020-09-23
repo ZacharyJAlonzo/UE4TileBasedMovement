@@ -76,10 +76,9 @@ TArray<int32> UTileAttackComponent::GetValidAttackTiles(int32 index, TArray<int3
 	return tiles;
 }
 
-
+//set in player controller
 void UTileAttackComponent::DesiredAttackLocation(int32 index)
-{
-    
+{ 
     TileEpicenter = index;
 }
 
@@ -190,6 +189,100 @@ TArray<int32> UTileAttackComponent::GetHorizontals(FMoveInformation Move, bool b
 }
 
 
+//ai controller methods
+TArray<int32> UTileAttackComponent::GetDiagonals(int32 index, FMoveInformation Move, bool bUseEpicenter)
+{
+    //TODO Setup blocking hits for actors when IsPhysical is ticked
+
+    TArray<int32> validMoves;
+    //gets all valid tiles in horizontal range
+
+    int32 rowLoc = index / TileGrid->GetGridColumns();
+    int32 colLoc = index % TileGrid->GetGridColumns();;
+    int32 range = Move.RangeInfo.DiagonalRange;
+
+    //this will only be true if the epicenter is within range. No need to protect.
+    if (bUseEpicenter)
+    {
+        rowLoc = TileEpicenter / TileGrid->GetGridColumns();
+        colLoc = TileEpicenter % TileGrid->GetGridColumns();
+        range = Move.RangeInfo.EpicenterDiagonal;
+    }
+
+    for (int32 i = 1; i < range; i++)
+    {
+
+        if (ValidatePotentialMove(rowLoc + i, colLoc + i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc + i, colLoc + i));
+        }
+        if (ValidatePotentialMove(rowLoc + i, colLoc - i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc + i, colLoc - i));
+        }
+
+        if (ValidatePotentialMove(rowLoc - i, colLoc + i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc - i, colLoc + i));
+        }
+        if (ValidatePotentialMove(rowLoc - i, colLoc - i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc - i, colLoc - i));
+        }
+
+    }
+
+    return validMoves;
+}
+
+TArray<int32> UTileAttackComponent::GetHorizontals(int32 index, FMoveInformation Move, bool bUseEpicenter)
+{
+    //TODO Setup blocking hits when isPhysical is ticked
+
+  //gets all valid tiles in horizontal range
+
+    int32 rowLoc = index / TileGrid->GetGridColumns();
+    int32 colLoc = index % TileGrid->GetGridColumns();;
+    int32 range = Move.RangeInfo.HorizontalRange;
+
+    //this will only be true if the epicenter is within range. No need to protect.
+    if (bUseEpicenter)
+    {
+        rowLoc = TileEpicenter / TileGrid->GetGridColumns();
+        colLoc = TileEpicenter % TileGrid->GetGridColumns();
+        range = Move.RangeInfo.EpicenterHorizontal;
+    }
+
+    TArray<int32> validMoves;
+    //gets all valid tiles in horizontal range
+    for (int32 i = 1; i < range; i++)
+    {
+        //rows
+        if (ValidatePotentialMove(rowLoc + i, colLoc))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc + i, colLoc));
+        }
+        if (ValidatePotentialMove(rowLoc - i, colLoc))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc - i, colLoc));
+        }
+
+        //cols
+        if (ValidatePotentialMove(rowLoc, colLoc + i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc, colLoc + i));
+        }
+        if (ValidatePotentialMove(rowLoc, colLoc - i))
+        {
+            validMoves.Add(TileGrid->Convert2DArrayPositionTo1D(rowLoc, colLoc - i));
+        }
+
+    }
+
+    return validMoves;
+}
+
+
 
 TArray<int32> UTileAttackComponent::GetGeneralRange(FMoveInformation Move, TArray<int32>& OutEpicenterTiles)
 {
@@ -203,6 +296,7 @@ TArray<int32> UTileAttackComponent::GetGeneralRange(FMoveInformation Move, TArra
         H.Append(D);
 
         TArray<int32> EpicenterRange;
+        //TileEpicenter is set by PlayerController when selecting an attack tile
         if (H.Contains(TileEpicenter))
         {
             TArray<int32> HE = GetHorizontals(Move, true);
@@ -219,6 +313,39 @@ TArray<int32> UTileAttackComponent::GetGeneralRange(FMoveInformation Move, TArra
 
     return H;
    
+}
+
+
+//get general range at a specified tile index. Used in AIController to calculate best move.
+TArray<int32> UTileAttackComponent::GetGeneralRange(int32 index, FMoveInformation Move, TArray<int32>& OutEpicenterTiles)
+{
+    TArray<int32> H = GetHorizontals(index, Move, false);
+    TArray<int32> D = GetDiagonals(index, Move, false);
+
+    //use epicenter values
+    if (Move.RangeInfo.bIsRangedAttack)
+    {
+        //combine the arrays
+        H.Append(D);
+
+        TArray<int32> EpicenterRange;
+        //TileEpicenter is set by PlayerController when selecting an attack tile
+        if (H.Contains(TileEpicenter))
+        {
+            TArray<int32> HE = GetHorizontals(index, Move, true);
+            TArray<int32> DE = GetDiagonals(index, Move, true);
+
+            HE.Append(DE);
+
+            OutEpicenterTiles = HE;
+        }
+
+    }
+
+    H.Append(D);
+
+    return H;
+
 }
 
 

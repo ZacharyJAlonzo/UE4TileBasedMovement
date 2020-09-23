@@ -16,24 +16,37 @@ enum EObjectIdentity
 };
 
 USTRUCT()
+struct FArrayObject
+{
+	GENERATED_BODY()
+
+public:
+	EObjectIdentity Identity;
+	AActor* ObjectContained;
+
+
+};
+
+USTRUCT()
 struct FArrayColumns
 {
 	GENERATED_BODY()
 
 public:
-	TArray<EObjectIdentity> Cols;
+	TArray<FArrayObject> Cols;
 
-	EObjectIdentity operator[] (int32 i) 
+	FArrayObject operator[] (int32 i) 
 	{
 		return Cols[i];
 	}
 
-	void Add(EObjectIdentity element) 
+	void Add(FArrayObject element) 
 	{
 		Cols.Add(element);
 	}
 
 };
+
 
 
 UCLASS()
@@ -68,17 +81,20 @@ public:
 	int32 GetTileDimension() const;
 
 	EObjectIdentity GetArrayValue(int32 r, int32 c);
+	FArrayObject GetArrayObject(int32 index);
+
 
 	//REPLACING WITH
 	UPROPERTY()
 	TArray<FArrayColumns> TileArray2;
+
 	
 
 	int32 Convert2DArrayPositionTo1D(int32 R, int32 C);
 	int32 ConvertWorldSpaceToTileIndex(FVector Location);
 	FVector ConvertTileIndexToWorldSpace(int32 Index);
 
-	void RequestTileInfoUpdate(int32 onRow, int32 onCol, EObjectIdentity contained);
+	void RequestTileInfoUpdate(int32 onRow, int32 onCol, EObjectIdentity contained, AActor* object = nullptr);
 
 
 private:	

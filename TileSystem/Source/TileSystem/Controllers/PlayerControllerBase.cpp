@@ -12,6 +12,12 @@
 #include "GameFramework/Character.h"
 #include "AIController.h"
 #include "TileSystem/Components/TileAttackComponent.h"
+#include "TileSystem/Controllers/TileCharacterControllerBase.h"
+#include "TileSystem/Actors/TurnManager.h"
+#include "TileSystem/Actors/TileCharacterBase.h"
+
+
+
 
 
 void APlayerControllerBase::SetupInputComponent()
@@ -28,6 +34,8 @@ void APlayerControllerBase::SetupInputComponent()
 	//change input bind to selecting attack vs specific attack
 	InputComponent->BindAction("Attack1", IE_Pressed, this, &APlayerControllerBase::IsSelectingAttack);
 }
+
+
 
 void APlayerControllerBase::Tick(float DeltaTime)
 {
@@ -54,7 +62,8 @@ void APlayerControllerBase::Tick(float DeltaTime)
 					UE_LOG(LogTemp, Warning, TEXT("EPICENTER: %i"), index);
 					//used in ranged attacks. needs to be set even if unused.
 					Component->DesiredAttackLocation(index);
-					ISelectableActorInterface::Execute_AttackSelect(ActorSelected);
+					//ISelectableActorInterface::Execute_AttackSelect(ActorSelected);
+					ActorSelected->AttackSelect();
 
 					
 				}
@@ -65,9 +74,15 @@ void APlayerControllerBase::Tick(float DeltaTime)
 	}
 }
 
+
+
 void APlayerControllerBase::BeginPlay()
 {
 	Super::BeginPlay();
+
+	TurnManager = Cast<ATurnManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATurnManager::StaticClass()));
+	
+	TurnManager->OnPlayerTurnStart.AddDynamic(this, &APlayerControllerBase::NewTurn);
 
 	//find a pointer to the tile grid. Maybe from Gamemode BP?
 	AGameMode_C* mode;
@@ -76,6 +91,7 @@ void APlayerControllerBase::BeginPlay()
 	TileGrid = mode->GetTileGridRef();
 }
 
+
 void APlayerControllerBase::IsSelectingAttack()
 {
 	if (bIsSelectingAttack)
@@ -83,14 +99,18 @@ void APlayerControllerBase::IsSelectingAttack()
 
 		if (ActorSelected)
 		{
-			ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
-			ISelectableActorInterface::Execute_ActorSelected(ActorSelected);
+			//ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
+			//ISelectableActorInterface::Execute_ActorSelected(ActorSelected);
+
+			ActorSelected->ActorDeselected();
+			ActorSelected->ActorSelected();
 		}
-		
+
 	}
 
 	bIsSelectingAttack = !bIsSelectingAttack;
 }
+
 
 void APlayerControllerBase::DeselectActor()
 {
@@ -98,14 +118,18 @@ void APlayerControllerBase::DeselectActor()
 
 	if (ActorSelected)
 	{
-		ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
+		//ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
+		ActorSelected->ActorDeselected();
 	}
 	
 	ActorSelected = nullptr;	
 }
 
+
 void APlayerControllerBase::SelectActor()
 {
+	//OnPlayerTurnEnd.Broadcast();
+
 	FHitResult Hit = TraceScreenToWorld();
 	//if(! selecting an attack tile)
 	//var set by a button press/UI clicked?
@@ -114,10 +138,26 @@ void APlayerControllerBase::SelectActor()
 	{
 		if (ActorSelected)
 		{
-			ISelectableActorInterface::Execute_Attack(ActorSelected);
-		
-			IsSelectingAttack();
-			DeselectActor();
+			//if actor selected has not attacked
+			UTileAttackComponent* Component = ActorSelected->FindComponentByClass<UTileAttackComponent>();
+
+			//if(!(Component->bDidAttack))
+
+			//ISelectableActorInterface::Execute_Attack(ActorSelected);
+
+			if (ActorSelected->CanAttack)
+			{
+				ActorSelected->Attack();
+
+				ActorSelected->SetCanAttack(false);
+
+				IsSelectingAttack();
+				DeselectActor();
+			}
+			
+
+			//set actorselected did attack
+
 			return;
 		}
 
@@ -126,6 +166,8 @@ void APlayerControllerBase::SelectActor()
 	//if an actor is already selected, see if we are pressing a tile in move range
 	if (ActorSelected && !bIsSelectingAttack)
 	{
+		UE_LOG(LogTemp, Error, TEXT("HERE"));
+
 		int32 index = TileGrid->ConvertWorldSpaceToTileIndex(Hit.ImpactPoint);
 	
 		//loc is the position to navigate to.
@@ -135,18 +177,35 @@ void APlayerControllerBase::SelectActor()
 
 		if (Component)
 		{
-			ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
-			Component->MoveTo(loc, index);
-			ISelectableActorInterface::Execute_ActorSelected(ActorSelected);
+			//if actor selected has not moved yet
+
+			//ISelectableActorInterface::Execute_ActorDeselected(ActorSelected);
+
+			ActorSelected->ActorDeselected();
+			
+			if (ActorSelected->CanMove)
+			{
+				Component->MoveTo(loc, index);
+				//ActorSelected->SetCanMove(false);
+			}
+			
+
+			ActorSelected->ActorDeselected();
+			//ISelectableActorInterface::Execute_ActorSelected(ActorSelected);
+
+			//set ActorSelected did move			
 		}
+
+		return;
 	}
 
-	if (!Hit.GetActor())
+	if (!Cast<ATileCharacterBase>(Hit.GetActor()))
 	{
 		return;
 	}
 
-	if (Hit.GetActor()->GetClass()->ImplementsInterface(USelectableActorInterface::StaticClass()))
+	//must be player controlled to select it
+	if (Cast<ATileCharacterBase>(Hit.GetActor())->bIsPlayerControlled) // Hit.GetActor()->GetClass()->ImplementsInterface(USelectableActorInterface::StaticClass()) && )
 	{
 		if (ActorSelected)
 		{
@@ -155,8 +214,10 @@ void APlayerControllerBase::SelectActor()
 		}
 
 		//cast to 'SelectableActor' interface 
-		ActorSelected = Hit.GetActor();
-		ISelectableActorInterface::Execute_ActorSelected(Hit.GetActor());
+		ActorSelected = Cast<ATileCharacterBase>(Hit.GetActor());
+		//ISelectableActorInterface::Execute_ActorSelected(Hit.GetActor());
+
+		ActorSelected->ActorSelected();
 
 		UE_LOG(LogTemp, Warning, TEXT("ActorSelected Call"))
 	}
@@ -200,4 +261,49 @@ FHitResult APlayerControllerBase::TraceScreenToWorld()
 	}
 
 	return FHitResult();
+}
+
+
+
+void APlayerControllerBase::SetControlledUnits(TArray<ATileCharacterBase*> units)
+{
+	ControlledUnits = units;
+	
+	UnitCount = units.Num();
+
+
+	UE_LOG(LogTemp, Error, TEXT("Units Sett %i"), UnitCount);
+
+	for (ATileCharacterBase* A : units)
+	{
+		A->OnUnitTurnComplete.AddDynamic(this, &APlayerControllerBase::IncrementUnitsCompletedTurn);
+	}
+}
+
+void APlayerControllerBase::IncrementUnitsCompletedTurn()
+{
+	MovedUnitCount++;
+	UE_LOG(LogTemp, Warning, TEXT("Called Increment"));
+
+	if (MovedUnitCount == UnitCount)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Moved = Unit"));
+		//the turn manager is subscribed to our event
+		OnPlayerTurnEnd.Broadcast();
+	}
+}
+
+//called after event in turn manager
+void APlayerControllerBase::NewTurn()
+{
+	MovedUnitCount = 0;
+
+	//for each unit
+		//reset move/attack vars
+
+	for (ATileCharacterBase* A : ControlledUnits)
+	{
+		A->SetCanMove(true);
+		A->SetCanAttack(true);
+	}
 }

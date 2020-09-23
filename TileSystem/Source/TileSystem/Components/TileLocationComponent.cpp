@@ -30,13 +30,13 @@ void UTileLocationComponent::BeginPlay()
 void UTileLocationComponent::UpdatePosition(int32 r, int32 c, AInstancedTileGrid* grid)
 {
 	
-	grid->RequestTileInfoUpdate(GridRowPosition, GridColPosition, EObjectIdentity::FreeTile);
+	grid->RequestTileInfoUpdate(GridRowPosition, GridColPosition, EObjectIdentity::FreeTile, GetOwner());
 
 	GridRowPosition = r;
 	GridColPosition = c;
 
 	//use owner->getEObjectIdentity, which will be inherited from an actor
-	grid->RequestTileInfoUpdate(GridRowPosition, GridColPosition, ObjectType);
+	grid->RequestTileInfoUpdate(GridRowPosition, GridColPosition, ObjectType, GetOwner());
 }
 
 

@@ -18,6 +18,8 @@ public:
 	// Sets default values for this component's properties
 	UTileMovementComponent();
 
+	AInstancedTileGrid* GetTileGrid();
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -36,10 +38,21 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void MoveTo(FVector loc, int32 index);
 
-private:
+	//returns tiles in a 1D system.
+	UFUNCTION(BlueprintCallable)
+		TArray<int32> GetTilesInMoveRange(TArray<int32>& OutNoMoveTiles);
 
+	//take a 2D index and validate its array contents in the TileGrid
+	bool ValidatePotentialMove(int32 r, int32 c);
+
+	int32 GetMoveRange();
+
+	bool bDidMove = false;
+
+private:
 	UPROPERTY(EditAnywhere)
 		int32 MoveDistance = 2;
+
 
 	UPROPERTY()
 	UInstancedStaticMeshComponent* MoveTileMesh;
@@ -76,11 +89,8 @@ private:
 	UFUNCTION(BlueprintCallable)
 	FVector ConvertTileIndexToLocation(int32 Index);
 
-	//returns tiles in a 1D system.
-	UFUNCTION(BlueprintCallable)
-	TArray<int32> GetTilesInMoveRange(TArray<int32>& OutNoMoveTiles);
+	
 
-	//take a 2D index and validate its array contents in the TileGrid
-	bool ValidatePotentialMove(int32 r, int32 c);
+
 	
 };

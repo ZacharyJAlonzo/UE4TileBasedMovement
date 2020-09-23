@@ -54,16 +54,25 @@ FVector AInstancedTileGrid::ConvertTileIndexToWorldSpace(int32 Index)
 
 //This method is called by actors in their begin play. This actor initializes everything to free space on construction.
 //
-void AInstancedTileGrid::RequestTileInfoUpdate(int32 onRow, int32 onCol, EObjectIdentity contained)
+void AInstancedTileGrid::RequestTileInfoUpdate(int32 onRow, int32 onCol, EObjectIdentity contained, AActor* object)
 {
 	//UE_LOG(LogTemp, Error, TEXT("Update requested on: %i, %i"), onRow, onCol);
 	//place new element at index
 
 	if (TileArray2.IsValidIndex(onRow) && TileArray2[onRow].Cols.IsValidIndex(onCol))
-		TileArray2[onRow].Cols.EmplaceAt(onCol, contained);
+	{
+		FArrayObject obj;
+		obj.Identity = contained;
+		obj.ObjectContained = object;
 
-	if (TileArray2.IsValidIndex(onRow) && TileArray2[onRow].Cols.IsValidIndex(onCol+1))
-		TileArray2[onRow].Cols.RemoveAt(onCol+1);
+		TileArray2[onRow].Cols.EmplaceAt(onCol, obj);
+	}
+		
+	if (TileArray2.IsValidIndex(onRow) && TileArray2[onRow].Cols.IsValidIndex(onCol + 1))
+	{
+		TileArray2[onRow].Cols.RemoveAt(onCol + 1);
+	}
+		
 	
 }
 
@@ -105,11 +114,28 @@ EObjectIdentity AInstancedTileGrid::GetArrayValue(int32 r, int32 c)
 		if (TileArray2[r].Cols.IsValidIndex(c))
 		{
 			//UE_LOG(LogTemp, Warning, TEXT("%i, %i was value: %i"), r, c, TileArray2[r][c]);
-			return TileArray2[r][c];
+			return TileArray2[r][c].Identity;
 		}
 	}
 
 	return EObjectIdentity::FAIL;
+}
+
+FArrayObject AInstancedTileGrid::GetArrayObject(int32 index)
+{
+	if (TileArray2.IsValidIndex(index / GridColumns))
+	{
+		if (TileArray2[index / GridColumns].Cols.IsValidIndex(index % GridColumns))
+		{
+			//UE_LOG(LogTemp, Warning, TEXT("%i, %i was value: %i"), r, c, TileArray2[r][c]);
+			return TileArray2[index / GridColumns][index % GridColumns];
+		}
+	}
+
+	FArrayObject obj;
+	obj.Identity = EObjectIdentity::FAIL;
+
+	return obj;
 }
 
 // Called when the game starts or when spawned
@@ -162,7 +188,11 @@ void AInstancedTileGrid::CreateGridArray()
 	{
 		for (int32 c = 0; c < GridColumns; c++)
 		{
-			TileArray2[r].Cols.Add(EObjectIdentity::FreeTile);
+			FArrayObject obj;
+			obj.Identity = EObjectIdentity::FreeTile;
+			obj.ObjectContained = nullptr;
+
+			TileArray2[r].Cols.Add(obj);
 		}
 	}
 
